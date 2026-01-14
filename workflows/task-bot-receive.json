@@ -2,35 +2,82 @@
   "name": "タスクBot - 受信・保存",
   "nodes": [
     {
-      "name": "Webhook",
-      "type": "n8n-nodes-base.webhook",
       "parameters": {
         "httpMethod": "POST",
         "path": "chatwork-task-bot",
-        "responseMode": "responseNode"
-      }
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [0, 0]
     },
     {
+      "parameters": {
+        "respondWith": "text",
+        "responseBody": "OK",
+        "options": {}
+      },
       "name": "Respond to Webhook",
       "type": "n8n-nodes-base.respondToWebhook",
-      "parameters": {
-        "responseBody": "OK",
-        "responseCode": 200
-      }
+      "typeVersion": 1.1,
+      "position": [220, -100]
     },
     {
-      "name": "メッセージ整形",
-      "type": "n8n-nodes-base.code",
       "parameters": {
         "jsCode": "const body = $input.first().json.body;\nconst webhookEventType = body.webhook_event_type;\nif (webhookEventType !== 'message_created') {\n  return [];\n}\nconst messageBody = body.webhook_event.body;\nconst sendTime = body.webhook_event.send_time;\nconst accountId = body.webhook_event.account_id;\n\n// UTC → JST（+9時間）\nconst date = new Date(sendTime * 1000 + 9 * 60 * 60 * 1000);\nconst year = date.getFullYear();\nconst month = String(date.getMonth() + 1).padStart(2, '0');\nconst day = String(date.getDate()).padStart(2, '0');\nconst hours = String(date.getHours()).padStart(2, '0');\nconst minutes = String(date.getMinutes()).padStart(2, '0');\nconst dateStr = `${year}-${month}-${day}`;\nconst timeStr = `${hours}:${minutes}`;\nconst taskLine = `- [ ] ${messageBody} (${timeStr})`;\nreturn [{\n  json: {\n    dateStr,\n    taskLine,\n    messageBody,\n    accountId\n  }\n}];"
-      }
+      },
+      "name": "メッセージ整形",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [220, 100]
     },
     {
-      "name": "Obsidian追記",
-      "type": "n8n-nodes-base.httpRequest",
       "parameters": {
-        "method": "POST",
+        "method": "GET",
         "url": "=https://naoki-obsidian.ngrok.io/vault/01_デイリーノート/{{ $json.dateStr }}.md",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": {}
+      },
+      "name": "デイリーノート確認",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [440, 100],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $response.statusCode }}",
+              "rightValue": 404,
+              "operator": {
+                "type": "number",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "name": "IF",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [660, 100]
+    },
+    {
+      "parameters": {
+        "method": "PUT",
+        "url": "=https://naoki-obsidian.ngrok.io/vault/01_デイリーノート/{{ $('メッセージ整形').item.json.dateStr }}.md",
         "authentication": "genericCredentialType",
         "genericAuthType": "httpHeaderAuth",
         "sendHeaders": true,
@@ -45,8 +92,39 @@
         "sendBody": true,
         "contentType": "raw",
         "rawContentType": "text/markdown",
-        "body": "={{ \"\\n\\n## タスクBot\\n\" + $json.taskLine }}"
-      }
+        "body": "={{ \"# \" + $('メッセージ整形').item.json.dateStr + \"\\n\\n## 今日やったこと\\n\\n## 次のアクション\\n\\n## メモ\" }}",
+        "options": {}
+      },
+      "name": "デイリーノート作成",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [880, 0]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://naoki-obsidian.ngrok.io/vault/01_デイリーノート/{{ $('メッセージ整形').item.json.dateStr }}.md",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "text/markdown"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "text/markdown",
+        "body": "={{ \"\\n\\n## タスクBot\\n\" + $('メッセージ整形').item.json.taskLine }}",
+        "options": {}
+      },
+      "name": "Obsidian追記",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1100, 100]
     }
   ],
   "connections": {
@@ -61,9 +139,36 @@
     "メッセージ整形": {
       "main": [
         [
+          { "node": "デイリーノート確認", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "デイリーノート確認": {
+      "main": [
+        [
+          { "node": "IF", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "IF": {
+      "main": [
+        [
+          { "node": "デイリーノート作成", "type": "main", "index": 0 }
+        ],
+        [
+          { "node": "Obsidian追記", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "デイリーノート作成": {
+      "main": [
+        [
           { "node": "Obsidian追記", "type": "main", "index": 0 }
         ]
       ]
     }
+  },
+  "settings": {
+    "executionOrder": "v1"
   }
 }
