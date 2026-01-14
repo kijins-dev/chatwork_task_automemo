@@ -1,0 +1,69 @@
+{
+  "name": "タスクBot - 受信・保存",
+  "nodes": [
+    {
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "chatwork-task-bot",
+        "responseMode": "responseNode"
+      }
+    },
+    {
+      "name": "Respond to Webhook",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "parameters": {
+        "responseBody": "OK",
+        "responseCode": 200
+      }
+    },
+    {
+      "name": "メッセージ整形",
+      "type": "n8n-nodes-base.code",
+      "parameters": {
+        "jsCode": "const body = $input.first().json.body;\nconst webhookEventType = body.webhook_event_type;\nif (webhookEventType !== 'message_created') {\n  return [];\n}\nconst messageBody = body.webhook_event.body;\nconst sendTime = body.webhook_event.send_time;\nconst accountId = body.webhook_event.account_id;\n\n// UTC → JST（+9時間）\nconst date = new Date(sendTime * 1000 + 9 * 60 * 60 * 1000);\nconst year = date.getFullYear();\nconst month = String(date.getMonth() + 1).padStart(2, '0');\nconst day = String(date.getDate()).padStart(2, '0');\nconst hours = String(date.getHours()).padStart(2, '0');\nconst minutes = String(date.getMinutes()).padStart(2, '0');\nconst dateStr = `${year}-${month}-${day}`;\nconst timeStr = `${hours}:${minutes}`;\nconst taskLine = `- [ ] ${messageBody} (${timeStr})`;\nreturn [{\n  json: {\n    dateStr,\n    taskLine,\n    messageBody,\n    accountId\n  }\n}];"
+      }
+    },
+    {
+      "name": "Obsidian追記",
+      "type": "n8n-nodes-base.httpRequest",
+      "parameters": {
+        "method": "POST",
+        "url": "=https://naoki-obsidian.ngrok.io/vault/01_デイリーノート/{{ $json.dateStr }}.md",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "text/markdown"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "text/markdown",
+        "body": "={{ \"\\n\\n## タスクBot\\n\" + $json.taskLine }}"
+      }
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          { "node": "Respond to Webhook", "type": "main", "index": 0 },
+          { "node": "メッセージ整形", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "メッセージ整形": {
+      "main": [
+        [
+          { "node": "Obsidian追記", "type": "main", "index": 0 }
+        ]
+      ]
+    }
+  }
+}
