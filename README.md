@@ -5,17 +5,30 @@ Chatwork BotへのDM送信でObsidianにタスクを自動登録するシステ�
 ## 概要
 
 スマホからChatwork Botアカウントにタスクメモを送ると、n8n経由でObsidianタスク専用ファイルに自動追記される。
+毎朝10時に完了タスクを整理し、未完了タスク一覧をChatworkに通知する。
 
 ## システム構成
 
 ```
+【タスク登録】
 スマホ
   ↓ DM送信
-Chatwork Botアカウント
+Chatwork Botアカウント (ルーム: 420024236)
   ↓ Webhook
-n8n (Webhook受信)
+n8n (ワークフロー1)
   ↓ 整形処理
-Obsidian (タスクファイルに追記)
+Obsidian (未完了タスク.mdに追記)
+
+【毎朝処理】
+n8n (ワークフロー2) 毎朝10時JST
+  ↓
+Obsidian読み込み
+  ↓
+完了タスク移動 + 未完了タスク整理
+  ↓
+Chatwork通知 (ルーム: 262320255)
+  ↓
+デイリーノート更新
 ```
 
 ## ファイル構成
@@ -28,24 +41,27 @@ Obsidian (タスクファイルに追記)
 
 ## ワークフロー
 
-### ワークフロー1: タスク受信・保存（完成）
+### ワークフロー1: タスク受信・保存（稼働中）
 - Chatwork Webhook → n8n → Obsidian追記
 - 保存先: `00_タスクBot/未完了タスク.md`
 - 形式: `- [ ] タスク内容 (M月D日 HH:MM)`
 
-### ワークフロー2: 毎朝タスク処理（予定）
-- 毎朝10時実行
+### ワークフロー2: 毎朝タスク処理（稼働中）
+- 毎朝10時(JST)実行
 - `- [x]` の行を `完了タスク.md` に移動
-- 未完了タスク一覧をChatworkに送信
+- 未完了タスク一覧をChatworkに送信（To:674453付き）
+- デイリーノートに処理結果を追記
 
 ## 設定情報
 
 | 項目 | 値 |
 |------|---|
-| Chatwork Bot DMルーム | 420024236 |
+| Chatwork Bot DMルーム（受信用） | 420024236 |
+| Chatwork 通知送信先ルーム | 262320255 |
 | n8n Webhook URL | https://michi-gaeru.app.n8n.cloud/webhook/chatwork-task-bot |
 | Obsidian保存先 | 00_タスクBot/ |
 | Chatwork Webhook設定ID | 34033 |
+| 自分のアカウントID | 674453 |
 
 ## n8nワークフロー構成
 
@@ -61,9 +77,42 @@ Respond to Webhook (即時応答)
 タスク追記 (HTTP Request POST)
 ```
 
+### ワークフロー2: タスクBot - 毎朝タスク処理
+
+```
+毎朝10時(JST) = UTC 1時
+  ↓
+未完了タスク読み込み
+  ↓
+タスク分類（完了/未完了）
+  ↓
+┌─ 完了タスクあり? ─┐
+│Yes               │No
+↓                  ↓
+完了タスク.md読込   │
+  ↓                │
+ファイル内容準備    │
+  ↓                │
+完了タスク保存      │
+  ↓                │
+未完了タスク更新    │
+  ↓                │
+└──────────────────┘
+  ↓
+Chatworkメッセージ作成
+  ↓
+Chatwork送信
+  ↓
+デイリーノート取得
+  ↓
+デイリーノート内容準備
+  ↓
+デイリーノート更新
+```
+
 ## 技術詳細
 
-### メッセージ整形ノード（JavaScript）
+### ワークフロー1: メッセージ整形ノード
 
 ```javascript
 const body = $input.first().json.body;
@@ -93,15 +142,34 @@ return [{
 }];
 ```
 
-### タスク追記ノード設定
+### ワークフロー2: Chatworkメッセージ作成ノード
 
-| 設定 | 値 |
-|------|---|
-| Method | POST |
-| URL | `https://naoki-obsidian.ngrok.io/vault/00_タスクBot/未完了タスク.md` |
-| Authentication | Header Auth (Obsidian API) |
-| Content-Type | text/markdown |
-| Body | `{{ $json.taskLine + "\n" }}` |
+```javascript
+// タスク分類ノードからデータ取得
+const taskData = $('タスク分類').first().json;
+const incompleteTasks = taskData.incompleteTasks;
+
+// Chatworkメッセージ作成
+let message = '[To:674453]\n';
+
+if (incompleteTasks.length === 0) {
+  message += '[info][title]本日のタスク[/title]未完了タスクはありません[/info]';
+} else {
+  const taskList = incompleteTasks.map(task => {
+    return task.replace(/^- \[ \] /, '');
+  }).join('\n');
+  
+  message += '[info][title]本日のタスク (' + incompleteTasks.length + '件)[/title]' + taskList + '[/info]';
+}
+
+return [{ json: { message: message } }];
+```
+
+### スケジュール設定
+
+| 設定 | 値 | 説明 |
+|------|---|------|
+| Cron Expression | `0 1 * * *` | UTC 1時 = JST 10時 |
 
 ## 開発履歴
 
@@ -110,6 +178,9 @@ return [{
 - タイムゾーン修正（UTC → JST）
 - デイリーノート方式からタスク専用ファイル方式に変更
 - 日付形式を「M月D日 HH:MM」に変更
+- ワークフロー2完成（毎朝タスク処理）
+- Chatwork通知にTo:674453追加
+- 通知送信先を262320255に変更
 
 ## 関連リンク
 
