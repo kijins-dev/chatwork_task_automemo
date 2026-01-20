@@ -7,40 +7,45 @@
           "interval": [
             {
               "field": "cronExpression",
-              "expression": "0 1 * * *"
+              "expression": "0 10 * * * "
             }
           ]
         }
       },
-      "id": "schedule-trigger",
+      "id": "598d114d-7f4b-4cab-8eca-b808c9a540df",
       "name": "毎朝10時",
       "type": "n8n-nodes-base.scheduleTrigger",
       "typeVersion": 1.2,
-      "position": [0, 0]
+      "position": [-880, 112]
     },
     {
       "parameters": {
-        "method": "GET",
         "url": "https://naoki-obsidian.ngrok.io/vault/00_%E3%82%BF%E3%82%B9%E3%82%AFBot%2F%E6%9C%AA%E5%AE%8C%E4%BA%86%E3%82%BF%E3%82%B9%E3%82%AF.md",
         "authentication": "genericCredentialType",
         "genericAuthType": "httpHeaderAuth",
         "options": {}
       },
-      "id": "read-tasks",
+      "id": "2fd3a589-0085-4eac-9ce8-3f7dc1293436",
       "name": "未完了タスク読み込み",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [220, 0]
+      "position": [-656, 112],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "INlAtRMVAwZ3hPZx",
+          "name": "Obsidian API"
+        }
+      }
     },
     {
       "parameters": {
-        "jsCode": "// 入力データ取得\nconst rawContent = $input.first().json.data || $input.first().json.body || '';\n\n// 文字列に変換\nlet content = '';\nif (typeof rawContent === 'string') {\n  content = rawContent;\n} else if (Buffer.isBuffer(rawContent)) {\n  content = rawContent.toString('utf8');\n} else {\n  content = String(rawContent);\n}\n\nconst lines = content.split('\\n');\n\nconst completedTasks = [];\nconst incompleteTasks = [];\nlet header = '';\n\nfor (const line of lines) {\n  const trimmed = line.trim();\n  \n  // ヘッダー行を保持\n  if (trimmed.startsWith('# ')) {\n    header = trimmed;\n    continue;\n  }\n  \n  // 空行はスキップ\n  if (trimmed === '') {\n    continue;\n  }\n  \n  if (trimmed.startsWith('- [x]') || trimmed.startsWith('- [X]')) {\n    completedTasks.push(trimmed);\n  } else if (trimmed.startsWith('- [ ]')) {\n    incompleteTasks.push(trimmed);\n  }\n}\n\nreturn [{\n  json: {\n    header: header,\n    completedTasks: completedTasks,\n    incompleteTasks: incompleteTasks,\n    completedCount: completedTasks.length,\n    incompleteCount: incompleteTasks.length,\n    hasCompleted: completedTasks.length > 0,\n    hasIncomplete: incompleteTasks.length > 0\n  }\n}];"
+        "jsCode": "// 入力データ取得\nconst rawContent = $input.first().json.data || $input.first().json.body || '';\n\n// 文字列に変換\nlet content = '';\nif (typeof rawContent === 'string') {\n  content = rawContent;\n} else if (Buffer.isBuffer(rawContent)) {\n  content = rawContent.toString('utf8');\n} else {\n  content = String(rawContent);\n}\n\nconst lines = content.split('\\n');\n\nconst completedTasks = [];\nconst incompleteTasks = [];\nlet header = '';\n\nfor (const line of lines) {\n  const trimmed = line.trim();\n  \n  if (trimmed.startsWith('# ')) {\n    header = trimmed;\n    continue;\n  }\n  \n  if (trimmed === '') {\n    continue;\n  }\n  \n  if (trimmed.startsWith('- [x]') || trimmed.startsWith('- [X]')) {\n    completedTasks.push(trimmed);\n  } else if (trimmed.startsWith('- [ ]')) {\n    incompleteTasks.push(trimmed);\n  }\n}\n\nreturn [{\n  json: {\n    header: header,\n    completedTasks: completedTasks,\n    incompleteTasks: incompleteTasks,\n    completedCount: completedTasks.length,\n    incompleteCount: incompleteTasks.length,\n    hasCompleted: completedTasks.length > 0,\n    hasIncomplete: incompleteTasks.length > 0\n  }\n}];"
       },
-      "id": "parse-tasks",
+      "id": "d8b5f02d-a1ae-41e1-a423-3198bcceee16",
       "name": "タスク分類",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [440, 0]
+      "position": [-448, 112]
     },
     {
       "parameters": {
@@ -65,15 +70,14 @@
         },
         "options": {}
       },
-      "id": "check-completed",
+      "id": "ec3884d1-b322-427b-bb9e-544774e24bea",
       "name": "完了タスクあり?",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2,
-      "position": [660, 0]
+      "position": [-224, 112]
     },
     {
       "parameters": {
-        "method": "GET",
         "url": "https://naoki-obsidian.ngrok.io/vault/00_%E3%82%BF%E3%82%B9%E3%82%AFBot%2F%E5%AE%8C%E4%BA%86%E3%82%BF%E3%82%B9%E3%82%AF.md",
         "authentication": "genericCredentialType",
         "genericAuthType": "httpHeaderAuth",
@@ -85,21 +89,27 @@
           }
         }
       },
-      "id": "read-completed-file",
+      "id": "49746fa7-e73c-462a-843c-67377a94ae88",
       "name": "完了タスクファイル読み込み",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [880, -100]
+      "position": [0, 0],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "INlAtRMVAwZ3hPZx",
+          "name": "Obsidian API"
+        }
+      }
     },
     {
       "parameters": {
-        "jsCode": "// 前のノードからデータ取得\nconst taskData = $('タスク分類').first().json;\nconst completedFileResponse = $input.first().json;\n\n// 既存の完了タスクファイル内容\nlet existingContent = '';\nif (completedFileResponse.data) {\n  existingContent = typeof completedFileResponse.data === 'string' \n    ? completedFileResponse.data \n    : completedFileResponse.data.toString('utf8');\n} else if (completedFileResponse.body) {\n  existingContent = typeof completedFileResponse.body === 'string'\n    ? completedFileResponse.body\n    : completedFileResponse.body.toString('utf8');\n}\n\n// 今日の日付（JST）\nconst now = new Date();\nconst jstNow = new Date(now.getTime() + 9 * 60 * 60 * 1000);\nconst year = jstNow.getFullYear();\nconst month = jstNow.getMonth() + 1;\nconst day = jstNow.getDate();\nconst dateHeader = '\\n## ' + year + '年' + month + '月' + day + '日 完了\\n';\n\n// 新しい完了タスクを追加\nconst newCompletedContent = existingContent.trim() + dateHeader + taskData.completedTasks.join('\\n') + '\\n';\n\n// 未完了タスクファイルの新しい内容（ヘッダー保持）\nlet newIncompleteContent = taskData.header + '\\n\\n';\nif (taskData.incompleteTasks.length > 0) {\n  newIncompleteContent += taskData.incompleteTasks.join('\\n') + '\\n';\n}\n\nreturn [{\n  json: {\n    newCompletedContent: newCompletedContent,\n    newIncompleteContent: newIncompleteContent,\n    completedTasks: taskData.completedTasks,\n    incompleteTasks: taskData.incompleteTasks\n  }\n}];"
+        "jsCode": "const taskData = $('タスク分類').first().json;\nconst completedFileResponse = $input.first().json;\n\nlet existingContent = '';\nif (completedFileResponse.data) {\n  existingContent = typeof completedFileResponse.data === 'string' \n    ? completedFileResponse.data \n    : completedFileResponse.data.toString('utf8');\n} else if (completedFileResponse.body) {\n  existingContent = typeof completedFileResponse.body === 'string'\n    ? completedFileResponse.body\n    : completedFileResponse.body.toString('utf8');\n}\n\nconst now = new Date();\nconst jstNow = new Date(now.getTime() + 9 * 60 * 60 * 1000);\nconst year = jstNow.getFullYear();\nconst month = jstNow.getMonth() + 1;\nconst day = jstNow.getDate();\nconst dateHeader = `\\n## ${year}年${month}月${day}日 完了\\n`;\n\nconst newCompletedContent = existingContent.trim() + dateHeader + taskData.completedTasks.join('\\n') + '\\n';\n\nlet newIncompleteContent = taskData.header + '\\n\\n';\nif (taskData.incompleteTasks.length > 0) {\n  newIncompleteContent += taskData.incompleteTasks.join('\\n') + '\\n';\n}\n\nreturn [{\n  json: {\n    newCompletedContent: newCompletedContent,\n    newIncompleteContent: newIncompleteContent,\n    completedTasks: taskData.completedTasks,\n    incompleteTasks: taskData.incompleteTasks\n  }\n}];"
       },
-      "id": "prepare-content",
+      "id": "2f7bb43d-a143-46a5-bbc0-9b783dda80a0",
       "name": "ファイル内容準備",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [1100, -100]
+      "position": [224, 0]
     },
     {
       "parameters": {
@@ -109,7 +119,8 @@
         "genericAuthType": "httpHeaderAuth",
         "sendBody": true,
         "contentType": "raw",
-        "body": "={{ $json.newCompletedContent }}",
+        "rawContentType": "text/markdown",
+        "body": "={{ $('ファイル内容準備').first().json.newCompletedContent }}",
         "options": {
           "response": {
             "response": {
@@ -118,11 +129,17 @@
           }
         }
       },
-      "id": "write-completed",
+      "id": "3a45ce39-871e-4fd1-ac21-33f2cbb9862e",
       "name": "完了タスク保存",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [1320, -100]
+      "position": [448, 0],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "INlAtRMVAwZ3hPZx",
+          "name": "Obsidian API"
+        }
+      }
     },
     {
       "parameters": {
@@ -132,24 +149,31 @@
         "genericAuthType": "httpHeaderAuth",
         "sendBody": true,
         "contentType": "raw",
-        "body": "={{ $json.newIncompleteContent }}",
+        "rawContentType": "text/markdown",
+        "body": "={{ $('ファイル内容準備').first().json.newIncompleteContent }}",
         "options": {}
       },
-      "id": "write-incomplete",
+      "id": "7586582e-1739-450d-bb53-3a8017335ec5",
       "name": "未完了タスク更新",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [1540, -100]
+      "position": [448, 144],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "INlAtRMVAwZ3hPZx",
+          "name": "Obsidian API"
+        }
+      }
     },
     {
       "parameters": {
-        "jsCode": "// タスク分類ノードからデータ取得\nconst taskData = $('タスク分類').first().json;\nconst incompleteTasks = taskData.incompleteTasks;\n\n// Chatworkメッセージ作成\nlet message = '[To:674453]\\n';\n\nif (incompleteTasks.length === 0) {\n  message += '[info][title]本日のタスク[/title]未完了タスクはありません[/info]';\n} else {\n  const taskList = incompleteTasks.map(task => {\n    return task.replace(/^- \\[ \\] /, '');\n  }).join('\\n');\n  \n  message += '[info][title]本日のタスク (' + incompleteTasks.length + '件)[/title]' + taskList + '[/info]';\n}\n\nreturn [{ json: { message: message } }];"
+        "jsCode": "const taskData = $('タスク分類').first().json;\nconst incompleteTasks = taskData.incompleteTasks;\n\nlet message = '[To:674453]\\n';\n\nif (incompleteTasks.length === 0) {\n  message += '[info][title]本日のタスク[/title]未完了タスクはありません[/info]';\n} else {\n  const taskList = incompleteTasks.map(task => {\n    return task.replace(/^- \\[ \\] /, '');\n  }).join('\\n');\n  \n  message += '[info][title]本日のタスク (' + incompleteTasks.length + '件)[/title]' + taskList + '[/info]';\n}\n\nreturn [{ json: { message: message } }];"
       },
-      "id": "create-message",
+      "id": "8f73f19b-d862-4480-943f-4f4805b67ea2",
       "name": "Chatworkメッセージ作成",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [1760, 0]
+      "position": [880, 112]
     },
     {
       "parameters": {
@@ -173,35 +197,136 @@
         },
         "options": {}
       },
-      "id": "send-chatwork",
+      "id": "6e976620-e6c0-4bbb-945d-b1a91dc59682",
       "name": "Chatwork送信",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [1980, 0]
+      "position": [1104, 112],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "ZoEKup2ttFPApp1X",
+          "name": "Chatwork APIピジカ"
+        }
+      }
+    },
+    {
+      "parameters": {},
+      "id": "bbe82eaa-c23a-40e0-b515-b29b547e7038",
+      "name": "完了タスクなし",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [0, 208]
     },
     {
       "parameters": {
-        "method": "GET",
-        "url": "https://naoki-obsidian.ngrok.io/periodic/daily/",
-        "authentication": "genericCredentialType",
-        "genericAuthType": "httpHeaderAuth",
-        "options": {}
+        "jsCode": "const now = new Date();\nconst jst = new Date(now.getTime() + 9 * 60 * 60 * 1000);\n\n// 前日を計算\nconst yesterday = new Date(jst);\nyesterday.setDate(yesterday.getDate() - 1);\n\nconst year = yesterday.getFullYear();\nconst month = String(yesterday.getMonth() + 1).padStart(2, '0');\nconst day = String(yesterday.getDate()).padStart(2, '0');\n\nconst path = `01_デイリーノート/${year}年/${year}-${month}-${day}.md`;\nconst encodedPath = encodeURIComponent(path);\n\nconst todayMonth = jst.getMonth() + 1;\nconst todayDay = jst.getDate();\nconst hours = String(jst.getHours()).padStart(2, '0');\nconst minutes = String(jst.getMinutes()).padStart(2, '0');\nconst timestamp = `${todayMonth}月${todayDay}日 ${hours}:${minutes}`;\n\nreturn [{\n  json: {\n    path: path,\n    encodedPath: encodedPath,\n    timestamp: timestamp,\n    yesterdayDate: `${year}-${month}-${day}`\n  }\n}];"
       },
-      "id": "get-daily-note",
-      "name": "デイリーノート取得",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
-      "position": [2200, 0]
-    },
-    {
-      "parameters": {
-        "jsCode": "// デイリーノート内容取得\nconst dailyResponse = $input.first().json;\nlet dailyContent = '';\nif (dailyResponse.data) {\n  dailyContent = typeof dailyResponse.data === 'string'\n    ? dailyResponse.data\n    : dailyResponse.data.toString('utf8');\n} else if (dailyResponse.body) {\n  dailyContent = typeof dailyResponse.body === 'string'\n    ? dailyResponse.body\n    : dailyResponse.body.toString('utf8');\n}\n\n// タスク分類ノードからデータ取得\nconst taskData = $('タスク分類').first().json;\n\n// 追記内容作成\nlet appendContent = '\\n\\n## タスクBot処理結果\\n';\nappendContent += '- 完了タスク: ' + taskData.completedCount + '件\\n';\nappendContent += '- 未完了タスク: ' + taskData.incompleteCount + '件\\n';\n\nif (taskData.hasCompleted) {\n  appendContent += '\\n### 完了したタスク\\n';\n  appendContent += taskData.completedTasks.join('\\n') + '\\n';\n}\n\nif (taskData.hasIncomplete) {\n  appendContent += '\\n### 残りのタスク\\n';\n  appendContent += taskData.incompleteTasks.join('\\n') + '\\n';\n}\n\n// 既に同じセクションがあれば追記しない\nif (dailyContent.includes('## タスクBot処理結果')) {\n  return [{ json: { content: dailyContent, skipped: true } }];\n}\n\nconst newContent = dailyContent + appendContent;\n\nreturn [{ json: { content: newContent, skipped: false } }];"
-      },
-      "id": "prepare-daily",
-      "name": "デイリーノート内容準備",
+      "id": "node-daily-date-calc",
+      "name": "前日日付計算",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [2420, 0]
+      "position": [-880, -304]
+    },
+    {
+      "parameters": {
+        "url": "=https://naoki-obsidian.ngrok.io/vault/{{ $json.encodedPath }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": {
+          "response": {
+            "response": {
+              "neverError": true,
+              "responseFormat": "text"
+            }
+          }
+        }
+      },
+      "id": "node-daily-read",
+      "name": "デイリーノート読み込み",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [-656, -304],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "INlAtRMVAwZ3hPZx",
+          "name": "Obsidian API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "conditions": [
+            {
+              "id": "cond-has-task",
+              "leftValue": "={{ $json.data }}",
+              "rightValue": "- [ ]",
+              "operator": {
+                "type": "string",
+                "operation": "contains"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "node-task-check",
+      "name": "タスク有無チェック",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [-432, -304]
+    },
+    {
+      "parameters": {
+        "jsCode": "const content = $('デイリーノート読み込み').first().json.data;\nconst timestamp = $('前日日付計算').first().json.timestamp;\nconst yesterdayDate = $('前日日付計算').first().json.yesterdayDate;\n\nif (!content) {\n  return [{ json: { tasks: [], count: 0 } }];\n}\n\nconst lines = content.split('\\n');\nconst incompleteTasks = lines\n  .filter(line => /^[\\s]*- \\[ \\] .+/.test(line))\n  .map(line => line.trim());\n\nconst formattedTasks = incompleteTasks.map(task => {\n  if (/\\([0-9]+月[0-9]+日/.test(task)) {\n    return task;\n  }\n  return `${task} (${timestamp})`;\n});\n\nreturn [{\n  json: {\n    tasks: formattedTasks,\n    count: formattedTasks.length,\n    source: yesterdayDate\n  }\n}];"
+      },
+      "id": "node-task-extract",
+      "name": "未完了タスク抽出",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [-208, -304]
+    },
+    {
+      "parameters": {
+        "url": "https://naoki-obsidian.ngrok.io/vault/00_%E3%82%BF%E3%82%B9%E3%82%AFBot%2F%E6%9C%AA%E5%AE%8C%E4%BA%86%E3%82%BF%E3%82%B9%E3%82%AF.md",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": {
+          "response": {
+            "response": {
+              "neverError": true,
+              "responseFormat": "text"
+            }
+          }
+        }
+      },
+      "id": "node-existing-read",
+      "name": "既存タスク読み込み",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [16, -304],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "INlAtRMVAwZ3hPZx",
+          "name": "Obsidian API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const newTasks = $('未完了タスク抽出').first().json.tasks;\nconst existingContent = $('既存タスク読み込み').first().json.data || '';\n\nif (newTasks.length === 0) {\n  return [{ json: { appendContent: '', newCount: 0 } }];\n}\n\nfunction normalizeTask(task) {\n  return task\n    .replace(/^- \\[ \\] /, '')\n    .replace(/ \\([0-9]+月[0-9]+日.*?\\)$/, '')\n    .replace(/ 📅 \\d{4}-\\d{2}-\\d{2}/, '')\n    .replace(/ [⏫🔼🔽⏬]/g, '')\n    .trim()\n    .toLowerCase();\n}\n\nconst existingLines = existingContent.split('\\n').filter(l => l.startsWith('- [ ]'));\nconst existingSet = new Set(existingLines.map(normalizeTask));\n\nconst uniqueTasks = newTasks.filter(task => !existingSet.has(normalizeTask(task)));\n\nif (uniqueTasks.length === 0) {\n  return [{ json: { appendContent: '', newCount: 0 } }];\n}\n\nconst appendContent = '\\n' + uniqueTasks.join('\\n');\n\nreturn [{\n  json: {\n    appendContent: appendContent,\n    newCount: uniqueTasks.length,\n    tasks: uniqueTasks\n  }\n}];"
+      },
+      "id": "node-dedup-check",
+      "name": "重複チェック",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [240, -304]
     },
     {
       "parameters": {
@@ -213,12 +338,12 @@
           },
           "conditions": [
             {
-              "id": "not-skipped",
-              "leftValue": "={{ $json.skipped }}",
-              "rightValue": false,
+              "id": "cond-has-new",
+              "leftValue": "={{ $json.newCount }}",
+              "rightValue": 0,
               "operator": {
-                "type": "boolean",
-                "operation": "equals"
+                "type": "number",
+                "operation": "gt"
               }
             }
           ],
@@ -226,200 +351,106 @@
         },
         "options": {}
       },
-      "id": "check-skip",
-      "name": "更新必要?",
+      "id": "node-append-check",
+      "name": "追記要否判定",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2,
-      "position": [2640, 0]
+      "position": [464, -304]
     },
     {
       "parameters": {
-        "method": "PUT",
-        "url": "https://naoki-obsidian.ngrok.io/periodic/daily/",
+        "method": "POST",
+        "url": "https://naoki-obsidian.ngrok.io/vault/00_%E3%82%BF%E3%82%B9%E3%82%AFBot%2F%E6%9C%AA%E5%AE%8C%E4%BA%86%E3%82%BF%E3%82%B9%E3%82%AF.md",
         "authentication": "genericCredentialType",
         "genericAuthType": "httpHeaderAuth",
         "sendBody": true,
         "contentType": "raw",
-        "body": "={{ $json.content }}",
-        "options": {}
+        "rawContentType": "text/markdown",
+        "body": "={{ $json.appendContent }}",
+        "options": {
+          "response": {
+            "response": {
+              "neverError": true
+            }
+          }
+        }
       },
-      "id": "update-daily",
-      "name": "デイリーノート更新",
+      "id": "node-daily-append",
+      "name": "デイリータスク追記",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [2860, -100]
-    },
-    {
-      "parameters": {},
-      "id": "noop-no-completed",
-      "name": "完了タスクなし",
-      "type": "n8n-nodes-base.noOp",
-      "typeVersion": 1,
-      "position": [880, 100]
+      "position": [688, -304],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "INlAtRMVAwZ3hPZx",
+          "name": "Obsidian API"
+        }
+      }
     }
   ],
   "connections": {
-    "毎朝10時": {
-      "main": [
-        [
-          {
-            "node": "未完了タスク読み込み",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
     "未完了タスク読み込み": {
-      "main": [
-        [
-          {
-            "node": "タスク分類",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
+      "main": [[{"node": "タスク分類", "type": "main", "index": 0}]]
     },
     "タスク分類": {
-      "main": [
-        [
-          {
-            "node": "完了タスクあり?",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
+      "main": [[{"node": "完了タスクあり?", "type": "main", "index": 0}]]
     },
     "完了タスクあり?": {
       "main": [
-        [
-          {
-            "node": "完了タスクファイル読み込み",
-            "type": "main",
-            "index": 0
-          }
-        ],
-        [
-          {
-            "node": "完了タスクなし",
-            "type": "main",
-            "index": 0
-          }
-        ]
+        [{"node": "完了タスクファイル読み込み", "type": "main", "index": 0}],
+        [{"node": "完了タスクなし", "type": "main", "index": 0}]
       ]
     },
     "完了タスクファイル読み込み": {
-      "main": [
-        [
-          {
-            "node": "ファイル内容準備",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
+      "main": [[{"node": "ファイル内容準備", "type": "main", "index": 0}]]
     },
     "ファイル内容準備": {
-      "main": [
-        [
-          {
-            "node": "完了タスク保存",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
+      "main": [[{"node": "完了タスク保存", "type": "main", "index": 0}]]
     },
     "完了タスク保存": {
-      "main": [
-        [
-          {
-            "node": "未完了タスク更新",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
+      "main": [[{"node": "未完了タスク更新", "type": "main", "index": 0}]]
     },
     "未完了タスク更新": {
-      "main": [
-        [
-          {
-            "node": "Chatworkメッセージ作成",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
+      "main": [[{"node": "Chatworkメッセージ作成", "type": "main", "index": 0}]]
     },
     "完了タスクなし": {
-      "main": [
-        [
-          {
-            "node": "Chatworkメッセージ作成",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
+      "main": [[{"node": "Chatworkメッセージ作成", "type": "main", "index": 0}]]
     },
     "Chatworkメッセージ作成": {
+      "main": [[{"node": "Chatwork送信", "type": "main", "index": 0}]]
+    },
+    "タスク有無チェック": {
       "main": [
-        [
-          {
-            "node": "Chatwork送信",
-            "type": "main",
-            "index": 0
-          }
-        ]
+        [{"node": "未完了タスク抽出", "type": "main", "index": 0}],
+        [{"node": "未完了タスク読み込み", "type": "main", "index": 0}]
       ]
     },
-    "Chatwork送信": {
+    "追記要否判定": {
       "main": [
-        [
-          {
-            "node": "デイリーノート取得",
-            "type": "main",
-            "index": 0
-          }
-        ]
+        [{"node": "デイリータスク追記", "type": "main", "index": 0}],
+        [{"node": "未完了タスク読み込み", "type": "main", "index": 0}]
       ]
     },
-    "デイリーノート取得": {
-      "main": [
-        [
-          {
-            "node": "デイリーノート内容準備",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
+    "毎朝10時": {
+      "main": [[{"node": "前日日付計算", "type": "main", "index": 0}]]
     },
-    "デイリーノート内容準備": {
-      "main": [
-        [
-          {
-            "node": "更新必要?",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
+    "前日日付計算": {
+      "main": [[{"node": "デイリーノート読み込み", "type": "main", "index": 0}]]
     },
-    "更新必要?": {
-      "main": [
-        [
-          {
-            "node": "デイリーノート更新",
-            "type": "main",
-            "index": 0
-          }
-        ],
-        []
-      ]
+    "デイリーノート読み込み": {
+      "main": [[{"node": "タスク有無チェック", "type": "main", "index": 0}]]
+    },
+    "未完了タスク抽出": {
+      "main": [[{"node": "既存タスク読み込み", "type": "main", "index": 0}]]
+    },
+    "既存タスク読み込み": {
+      "main": [[{"node": "重複チェック", "type": "main", "index": 0}]]
+    },
+    "重複チェック": {
+      "main": [[{"node": "追記要否判定", "type": "main", "index": 0}]]
+    },
+    "デイリータスク追記": {
+      "main": [[{"node": "未完了タスク読み込み", "type": "main", "index": 0}]]
     }
   },
   "settings": {
